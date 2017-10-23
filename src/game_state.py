@@ -4,10 +4,10 @@ import numpy as np
 import time
 import os
 
-BALL_AREA_THRES = [0, 1250]
-BASKET_AREA_THRES = [700, 1000]
-BALL_ROI = [(0, 202), (250, 360)]
-BASKET_ROI = [(0, 202), (50, 200)]
+BALL_AREA_THRES = (0, 1250)
+BASKET_AREA_THRES = (700, 1000)
+BALL_ROI = ((0, 202), (250, 360))
+BASKET_ROI = ((0, 202), (50, 200))
 BALL = "ball"
 BASKET = "basket"
 
@@ -15,17 +15,24 @@ BASKET = "basket"
 def process_video(source = 0, screen_view = True):
 	"""
 	This method is given a video source, reads from it until 
-	key "q" is pressed and yields the ball center coordinates
+	key "q" is pressed and yields the ball center coordinates.
+	It is defined as a generator so that the video processing loop
+	can be separated from the rest of the program logic
+
+	param::source:: int/str Video source
+	param::screen_view:: bool show what is happening or not
 	"""
 	cap = cv2.VideoCapture(source)
 	find_ball_center = find_center(BALL, 6)
 	find_basket_center = find_center(BASKET, 1)
+
 	while(cap.isOpened()):
 		ret, frame = cap.read()
 		gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 		_, binarized = cv2.threshold(gray,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
 		ball_center  = find_ball_center(binarized, BALL_ROI)
 		basket_center = find_basket_center(binarized, BASKET_ROI)
+
 		if screen_view and ball_center is not None :
 			for i in ball_center:
 				cv2.circle(frame,(i[0],i[1]),2,(0,0,255),3)
@@ -42,8 +49,11 @@ def process_video(source = 0, screen_view = True):
 
 def find_center(element, iterations):
 	"""
-	Closure that depending on what we want to look for (element) returns
+	Closure that expects an element to search for as input and returns
 	a function able to find the center of that element in an image
+
+	param::element:: str "ball"/"basket" that specifies the element to search for
+	param::iterations:: int number of times the morphological operation should be performed 
 	"""
 	# Define morphological operation, structuruing element
 	# and threshold depending on what are we looking for
@@ -55,11 +65,15 @@ def find_center(element, iterations):
 		el = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
 		THRESHOLDS = BALL_AREA_THRES
 		morphological_operation = cv2.dilate
+
 	def _find_center(image, roi):
 		"""
 		This function, once having defined the required values of the element
 		we are looking for, searchs for that element in the region of
 		interest and returns its center
+
+		param::image:: np.array() of the binarized image to be processed
+		param::roi:: ((x1, x2), (y1, y2))
 		"""
 		# apply morphological operation to region of interest
 		image = image[roi[1][0]:roi[1][1], roi[0][0]:roi[1][1]]
@@ -72,6 +86,7 @@ def find_center(element, iterations):
 			image,
 			cv2.RETR_LIST,
 			cv2.CHAIN_APPROX_SIMPLE)
+
 		centers = []
 		for contour in contours:
 			m = cv2.moments(contour)
@@ -86,12 +101,21 @@ def find_center(element, iterations):
 		return centers			
 	return _find_center
 
+def predict_movement(basket_centers):
+	"""
+	Given n consecutive basket centers and the time between frames, compute
+	the predicted position of the basket for the next frame.
+	With two consecutive frames we predict with velocity, with three consecutive
+	frames we can also estimate accleration.
+
+	param::basket_centers::((pos_0, time_0), (pos_1, time_1), ..., (pos_n, time_n))
+	"""
+	pass
 
 if __name__ == "__main__":
+	# This test both of the functions defined above
 	cur_path = os.path.abspath(__file__)
 	video_path = os.path.relpath('resources/playthrough.mp4', cur_path)
-	print cur_path, video_path
-	print __file__
 	processor = process_video(video_path) 
 	while True:
 		frames = processor.next()
