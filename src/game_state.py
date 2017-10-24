@@ -185,7 +185,7 @@ def update_buffer(centers_buffer, center, measured_time):
 
 
 if __name__ == "__main__":
-	# This test both of the functions defined above
+	# This tests the functions defined above
 	cur_path = os.path.abspath(__file__)
 	video_path = os.path.relpath('resources/playthrough.mp4', cur_path)
 	processor = process_video(video_path) 
