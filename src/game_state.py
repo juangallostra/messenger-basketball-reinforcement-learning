@@ -25,6 +25,8 @@ def process_video(source = 0, screen_view = True):
 	cap = cv2.VideoCapture(source)
 	find_ball_center = find_center(BALL, 6)
 	find_basket_center = find_center(BASKET, 1)
+	centers_buffer = [None]
+	predicted_pos = ()
 
 	while(cap.isOpened()):
 		ret, frame = cap.read()
@@ -35,22 +37,27 @@ def process_video(source = 0, screen_view = True):
 		ball_center, basket_center = find_centers(binarized,
 												  find_ball_center,
 												  find_basket_center)
+		centers_buffer = update_buffer(centers_buffer, basket_center, measured_time)
 
-		if screen_view and ball_center is not None :
-			for i in ball_center:
-				cv2.circle(frame,(i[0],i[1]),2,(0,0,255),3)
-			for i in basket_center:
-				cv2.circle(frame,(i[0],i[1]),2,(255,0,0),3)
-
-			yield (binarized, frame, ball_center, basket_center)
+		if screen_view:
+			if ball_center:
+				cv2.circle(frame,ball_center,2,(0,0,255),3)
+			if basket_center:
+				cv2.circle(frame,basket_center,2,(255,0,0),3)
+			if predicted_pos:
+				cv2.circle(frame,predicted_pos,2,(0,255,0),3)
+			predicted_pos = predict_movement(centers_buffer, 1)
+			yield (binarized, frame, ball_center, basket_center, predicted_pos)
 			continue
 
-		yield (ball_center, basket_center)
+		predicted_pos = predict_movement(centers_buffer, 1)
+		yield (ball_center, basket_center, predicted_pos)
+		continue
 
 	cap.release()
 	cv2.destroyAllWindows()
 
-def find_centers(binarized, find_ball_center, find_basket_center):
+def find_centers(binary_im, find_ball_center, find_basket_center):
 	"""
 	Function that returns both the ball and basket center. If the ball center is
 	not found in the ROI it means that the user already shot the ball. Then there
@@ -60,14 +67,14 @@ def find_centers(binarized, find_ball_center, find_basket_center):
 	param::find_ball_center::func function that returns the ball center
 	param::find_basket_center::func function that returns the basket center
 	"""
-	ball_center  = find_ball_center(binarized)
+	ball_center  = find_ball_center(binary_im)
 	# basket center should return only the true center
 	# only perform basket detection if ball has been previously found in ROI. 
 	if ball_center:
-		basket_center = find_basket_center(binarized)
+		basket_center = find_basket_center(binary_im)
 		return (ball_center, basket_center)
 	else:
-		return ([],[])
+		return (None, None)
 
 
 def find_center(element, iterations):
@@ -111,21 +118,18 @@ def find_center(element, iterations):
 			cv2.RETR_LIST,
 			cv2.CHAIN_APPROX_SIMPLE)
 
-		centers = []
 		for contour in contours:
 			m = cv2.moments(contour)
 			area =  cv2.contourArea(contour)
-			print area
 			if THRESHOLDS[0] < area < THRESHOLDS[1]:
 				try:
 					center = (int(m['m10']/m['m00']),
 					  int(m['m01']/m['m00'])+roi[1][0])
-					centers.append(center)
 					# Assume first match is the element
-					break
+					return center
 				except:
 					pass
-		return centers			
+
 	return _find_center
 
 def predict_movement(basket_centers, steps=1):
@@ -139,18 +143,46 @@ def predict_movement(basket_centers, steps=1):
 	param::steps::int number of steps into which the position is predicted
 	"""
 	if len(basket_centers)<=1:
-		# warn but continue with normal execution
-		pass
-	elif len(basket_centers)>1:
-		# predict with speed
-		pass
+		# Empty prediction (empty buffer)
+		return None
+	elif len(basket_centers)==2 and None not in basket_centers:
+		# predict with speed (up to now this only implements one step prediction)
+		pos_0 = basket_centers[0][0]
+		pos_1 = basket_centers[1][0]
+		delta_t = basket_centers[1][1]-basket_centers[0][1]
+		speed = (float(pos_1[0]-pos_0[0])/delta_t, float(pos_1[1]-pos_0[1])/delta_t)
+		# Assuming constant frame rate (delta_t should be constant) the predicted position
+		# for the next frame is x=x_1+v_x*delta_t & y=y_1+v_y*delta_t
+		# Obviously this won't work when bouncing
+		return (pos_1[0]+int(speed[0]*delta_t), pos_1[1]+int(speed[1]*delta_t))
 	elif len(basket_centers)>2:
 		# predict with acceleration and speed
 		pass
 	# The idea is to be able to predict the position of the basket by measuring its
 	# position at different frames
 
-	pass
+	return None
+
+def update_buffer(centers_buffer, center, measured_time):
+	"""
+	Updates the buffer that stores the computed positions of the basket_centers. This function
+	should be modified if predict_movement is updated.
+
+	param::centers_buffer::tuple/list cotaining centers in the form (x0, y0), ..., (xn-1, yn-1)
+	param::centers::tuple  (xn, yn) current center position
+	"""
+	if not center:
+		# if failed to detect the center empty buffer to avoid problems
+		return [None]
+	elif len(centers_buffer) == 2:
+		# update buffer
+		centers_buffer.pop(0)
+		centers_buffer.append((center, measured_time))
+	else:
+		centers_buffer.append((center, measured_time))
+	return centers_buffer
+
+
 
 if __name__ == "__main__":
 	# This test both of the functions defined above
@@ -163,6 +195,6 @@ if __name__ == "__main__":
 		bin_gray = cv2.cvtColor(frames[0], cv2.COLOR_GRAY2BGR)
 		frames = np.hstack((frames[1],bin_gray))
 		cv2.imshow('frame', frames)
-		time.sleep(0.01)
+		time.sleep(0.01) # slow down so that the human eye can appreciate it
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
