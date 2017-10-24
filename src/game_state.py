@@ -131,7 +131,7 @@ def find_center(element, iterations):
 def predict_movement(basket_centers, steps=1):
 	"""
 	Given n consecutive basket centers and the time between frames, compute
-	the predicted position of the basket for the next frame.
+	the predicted position of the basket for the next number of steps.
 	With two consecutive frames we predict with velocity, with three consecutive
 	frames we can also estimate accleration.
 
