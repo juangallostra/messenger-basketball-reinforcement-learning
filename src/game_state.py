@@ -44,20 +44,21 @@ def process_video(source = 0, screen_view = True):
 				cv2.circle(frame,ball_center,2,(0,0,255),3)
 			if basket_center:
 				cv2.circle(frame,basket_center,2,(255,0,0),3)
-			if predicted_pos:
-				cv2.circle(frame,predicted_pos,2,(0,255,0),3)
-			predicted_pos = predict_movement(centers_buffer, 1)
+			if predicted_pos is not None:
+				for prediction in predicted_pos:
+					cv2.circle(frame,prediction,2,(0,255,0),3)
+			predicted_pos = predict_movement(centers_buffer, 5)
 			yield (binarized, frame, ball_center, basket_center, predicted_pos)
 			continue
 
-		predicted_pos = predict_movement(centers_buffer, 1)
+		predicted_pos = predict_movement(centers_buffer, 5)
 		yield (ball_center, basket_center, predicted_pos)
 		continue
 
 	cap.release()
 	cv2.destroyAllWindows()
 
-def find_centers(binary_im, find_ball_center, find_basket_center):
+def find_centers(binary_img, find_ball_center, find_basket_center):
 	"""
 	Function that returns both the ball and basket center. If the ball center is
 	not found in the ROI it means that the user already shot the ball. Then there
@@ -67,11 +68,11 @@ def find_centers(binary_im, find_ball_center, find_basket_center):
 	param::find_ball_center::func function that returns the ball center
 	param::find_basket_center::func function that returns the basket center
 	"""
-	ball_center  = find_ball_center(binary_im)
+	ball_center  = find_ball_center(binary_img)
 	# basket center should return only the true center
 	# only perform basket detection if ball has been previously found in ROI. 
 	if ball_center:
-		basket_center = find_basket_center(binary_im)
+		basket_center = find_basket_center(binary_img)
 		return (ball_center, basket_center)
 	else:
 		return (None, None)
@@ -154,7 +155,16 @@ def predict_movement(basket_centers, steps=1):
 		# Assuming constant frame rate (delta_t should be constant) the predicted position
 		# for the next frame is x=x_1+v_x*delta_t & y=y_1+v_y*delta_t
 		# Obviously this won't work when bouncing
-		return (pos_1[0]+int(speed[0]*delta_t), pos_1[1]+int(speed[1]*delta_t))
+		predictions = []
+		for k in range(1, steps+1):
+			if predictions:
+				predictions += [(predictions[-1][0]+int(speed[0]*delta_t*k), 
+								 predictions[-1][1]+int(speed[1]*delta_t*k))]
+			else:
+				predictions += [(pos_1[0]+int(speed[0]*delta_t),
+				                 pos_1[1]+int(speed[1]*delta_t))]
+
+		return  predictions
 	elif len(basket_centers)>2:
 		# predict with acceleration and speed
 		pass
