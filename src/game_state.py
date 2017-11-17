@@ -12,7 +12,6 @@ BASKET_AREA_THRES = (700, 900)
 BALL_ROI = ((0, 202), (250, 360))
 BASKET_ROI = ((0, 202), (50, 200))
 NUMBERS_ROI = ((0, 202), (200, 275))
-BUFFER_LENGTH = 16
 BALL = "ball"
 BASKET = "basket"
 
