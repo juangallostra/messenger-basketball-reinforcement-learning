@@ -1,58 +1,61 @@
 import cv2
 import numpy as np
+import pytesseract as ps
+from PIL import Image
 # for testing purposes
 import time
 import os
+
 
 BALL_AREA_THRES = (0, 1250)
 BASKET_AREA_THRES = (700, 900)
 BALL_ROI = ((0, 202), (250, 360))
 BASKET_ROI = ((0, 202), (50, 200))
+NUMBERS_ROI = ((0, 202), (200, 275))
+BUFFER_LENGTH = 16
 BALL = "ball"
 BASKET = "basket"
 
 
 def process_video(source = 0, screen_view = True):
 	"""
-	This method is given a video source, reads from it until 
-	key "q" is pressed and yields the ball center coordinates.
+	This generator is given a video source, reads from it until 
+	key "q" is pressed and while not, it yields the ball center coordinates,
+	the basket center coordinates and, if required, the current score.
 	It is defined as a generator so that the video processing loop
 	can be separated from the rest of the program logic
 
-	param::source::int/str Video source
-	param::screen_view::bool show what is happening or not
+	param::int/str::source Video source
+	param::bool::screen_view show what is happening or not
+	yields::tuple::(ball_center, basket_center, score) found centers and score or None
 	"""
 	cap = cv2.VideoCapture(source)
 	find_ball_center = find_center(BALL, 6)
 	find_basket_center = find_center(BASKET, 1)
 	centers_buffer = [None]
-	predicted_pos = ()
-
 	while(cap.isOpened()):
 		ret, frame = cap.read()
 		measured_time = time.time()
-
 		gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 		_, binarized = cv2.threshold(gray,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
 		ball_center, basket_center = find_centers(binarized,
 												  find_ball_center,
 												  find_basket_center)
-		centers_buffer = update_buffer(centers_buffer, basket_center, measured_time)
+
+		if ball_center and basket_center:
+			score = get_score(frame)
 
 		if screen_view:
 			if ball_center:
 				cv2.circle(frame,ball_center,2,(0,0,255),3)
 			if basket_center:
 				cv2.circle(frame,basket_center,2,(255,0,0),3)
-			if predicted_pos is not None:
-				for prediction in predicted_pos:
-					cv2.circle(frame,prediction,2,(0,255,0),3)
-			predicted_pos = predict_movement(centers_buffer, 5)
-			yield (binarized, frame, ball_center, basket_center, predicted_pos)
+			if ball_center and basket_center:
+				get_score(frame)
+			yield (binarized, frame, ball_center, basket_center, score)
 			continue
 
-		predicted_pos = predict_movement(centers_buffer, 5)
-		yield (ball_center, basket_center, predicted_pos)
+		yield (ball_center, basket_center, score)
 		continue
 
 	cap.release()
@@ -64,9 +67,10 @@ def find_centers(binary_img, find_ball_center, find_basket_center):
 	not found in the ROI it means that the user already shot the ball. Then there
 	is no point in estimating the basket center position and hence it is not computed.
 
-	param::binarized::np.array of the binarized image
-	param::find_ball_center::func function that returns the ball center
-	param::find_basket_center::func function that returns the basket center
+	param::np.array::binarized numpy representation of the binarized image
+	param::func::find_ball_center function that returns the ball center
+	param::func::find_basket_center function that returns the basket center
+	returns::tuple::(ball_center, basket_center) coordinates of the centers if found else (None, None)
 	"""
 	ball_center  = find_ball_center(binary_img)
 	# basket center should return only the true center
@@ -83,8 +87,10 @@ def find_center(element, iterations):
 	Closure that expects an element to search for as input and returns
 	a function able to find the center of that element in an image
 
-	param::element::str "ball"/"basket" that specifies the element to search for
-	param::iterations::int number of times the morphological operation should be performed 
+	param::str::element "ball"/"basket" that specifies the element to search for
+	param::int::iterations number of times the morphological operation should be performed
+	returns::func::find_center function that searchs for the specified element with the
+	given parameters 
 	"""
 	# Define morphological operation, structuruing element
 	# and threshold depending on what are we looking for
@@ -104,8 +110,8 @@ def find_center(element, iterations):
 		we are looking for, searchs for that element in the region of
 		interest and returns its center
 
-		param::image::np.array of the binarized image to be processed
-		param::roi::tuple in the form ((x1, x2), (y1, y2))
+		param::np.array::image of the binarized image to be processed
+		returns::tuple::center coordinates of the center of the found element or None
 		"""
 		# apply morphological operation to region of interest
 		image = image[roi[1][0]:roi[1][1], roi[0][0]:roi[1][1]]
@@ -133,65 +139,28 @@ def find_center(element, iterations):
 
 	return _find_center
 
-def predict_movement(basket_centers, steps=1):
+def get_score(frame):
 	"""
-	Given n consecutive basket centers and the time between frames, compute
-	the predicted position of the basket for the next number of steps.
-	With two consecutive frames we predict with velocity, with three consecutive
-	frames we can also estimate accleration.
+	Function that extracts the current game score from a frame via tesseract ocr
 
-	param::basket_centers::tuple in the form ((pos_0, time_0), (pos_1, time_1), ..., (pos_n, time_n))
-	param::steps::int number of steps into which the position is predicted
+	param::np.array::frame current frame of the game where the score is to be extracted
+	returns::int::score current score of the game or empty string
 	"""
-	if len(basket_centers)<=1:
-		# Empty prediction (empty buffer)
-		return None
-	elif len(basket_centers)==2 and None not in basket_centers:
-		# predict with speed (up to now this only implements one step prediction)
-		pos_0 = basket_centers[0][0]
-		pos_1 = basket_centers[1][0]
-		delta_t = basket_centers[1][1]-basket_centers[0][1]
-		speed = (float(pos_1[0]-pos_0[0])/delta_t, float(pos_1[1]-pos_0[1])/delta_t)
-		# Assuming constant frame rate (delta_t should be constant) the predicted position
-		# for the next frame is x=x_1+v_x*delta_t & y=y_1+v_y*delta_t
-		# Obviously this won't work when bouncing
-		predictions = []
-		for k in range(1, steps+1):
-			if predictions:
-				predictions += [(predictions[-1][0]+int(speed[0]*delta_t*k), 
-								 predictions[-1][1]+int(speed[1]*delta_t*k))]
-			else:
-				predictions += [(pos_1[0]+int(speed[0]*delta_t),
-				                 pos_1[1]+int(speed[1]*delta_t))]
-
-		return  predictions
-	elif len(basket_centers)>2:
-		# predict with acceleration and speed
-		pass
-	# The idea is to be able to predict the position of the basket by measuring its
-	# position at different frames
-
-	return None
-
-def update_buffer(centers_buffer, center, measured_time):
-	"""
-	Updates the buffer that stores the computed positions of the basket_centers. This function
-	should be modified if predict_movement is updated.
-
-	param::centers_buffer::tuple/list cotaining centers in the form (x0, y0), ..., (xn-1, yn-1)
-	param::centers::tuple  (xn, yn) current center position
-	"""
-	if not center:
-		# if failed to detect the center empty buffer to avoid problems
-		return [None]
-	elif len(centers_buffer) == 2:
-		# update buffer
-		centers_buffer.pop(0)
-		centers_buffer.append((center, measured_time))
+	# Focus only on the area where the score is and build a PIL image from the numpy array
+	numb_area = frame[NUMBERS_ROI[1][0]:NUMBERS_ROI[1][1], NUMBERS_ROI[0][0]:NUMBERS_ROI[1][1]]
+	im = Image.fromarray(numb_area.astype('uint8'), 'RGB')
+	# Specify that the image should be treated as only containing
+	# one word (config param) and extract current score 
+	current_score = ps.image_to_string(im, config='-psm 8')
+	if current_score:
+		try:
+			current_score = int(current_score)
+		except ValueError:
+			current_score = None
 	else:
-		centers_buffer.append((center, measured_time))
-	return centers_buffer
+		current_score = None
 
+	return current_score
 
 
 if __name__ == "__main__":
@@ -201,10 +170,9 @@ if __name__ == "__main__":
 	processor = process_video(video_path) 
 	while True:
 		frames = processor.next()
-		#prediction = predict_movement(centers[1], 1)
 		bin_gray = cv2.cvtColor(frames[0], cv2.COLOR_GRAY2BGR)
 		frames = np.hstack((frames[1],bin_gray))
 		cv2.imshow('frame', frames)
-		time.sleep(0.01) # slow down so that the human eye can appreciate it
+		#time.sleep(0.03) # slow down so that the human eye can appreciate it
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
