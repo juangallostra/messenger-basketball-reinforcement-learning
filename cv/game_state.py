@@ -14,6 +14,7 @@ BASKET_ROI = ((0, 202), (50, 200))
 NUMBERS_ROI = ((0, 202), (200, 275))
 BALL = "ball"
 BASKET = "basket"
+NUMBERS = '1234567890'
 
 
 def process_video(source = 0, screen_view = True):
@@ -119,10 +120,21 @@ def find_center(element, iterations):
 		# from the contours of the image compute its 
 		# moments and from them derive the center if the
 		# area falls inside a given range
-		im, contours, hierarchy = cv2.findContours(
-			image,
-			cv2.RETR_LIST,
-			cv2.CHAIN_APPROX_SIMPLE)
+
+		# OPENCV 2.4.X
+		if '2.4' in cv2.__version__:
+			contours = cv2.findContours(
+				image,
+				cv2.RETR_LIST,
+				cv2.CHAIN_APPROX_SIMPLE)
+			contours = contours[0]
+
+		# OPENCV 3.X 
+		else:
+			im, contours, hierarchy = cv2.findContours(
+				image,
+				cv2.RETR_LIST,
+				cv2.CHAIN_APPROX_SIMPLE)
 
 		for contour in contours:
 			m = cv2.moments(contour)
@@ -151,6 +163,8 @@ def get_score(frame):
 	# Specify that the image should be treated as only containing
 	# one word (config param) and extract current score 
 	current_score = ps.image_to_string(im, config='-psm 8')
+	# retrieve numbers in order
+	current_score = ''.join([i for i in current_score if i in NUMBERS])
 	if current_score:
 		try:
 			current_score = int(current_score)
@@ -165,10 +179,12 @@ def get_score(frame):
 if __name__ == "__main__":
 	# This tests the functions defined above
 	cur_path = os.path.abspath(__file__)
+	# If calling game_state.py from another dir that is not cv this will not work
 	video_path = os.path.relpath('resources/playthrough.mp4', cur_path)
 	processor = process_video(video_path) 
 	while True:
 		frames = processor.next()
+		print frames[-1] # current score
 		bin_gray = cv2.cvtColor(frames[0], cv2.COLOR_GRAY2BGR)
 		frames = np.hstack((frames[1],bin_gray))
 		cv2.imshow('frame', frames)
