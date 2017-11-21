@@ -32,7 +32,6 @@ def process_video(source = 0, screen_view = True):
 	cap = cv2.VideoCapture(source)
 	find_ball_center = find_center(BALL, 6)
 	find_basket_center = find_center(BASKET, 1)
-	centers_buffer = [None]
 	while(cap.isOpened()):
 		ret, frame = cap.read()
 		measured_time = time.time()
