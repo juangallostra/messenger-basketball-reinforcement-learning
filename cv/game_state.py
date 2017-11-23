@@ -32,6 +32,7 @@ def process_video(source = 0, screen_view = True):
 	cap = cv2.VideoCapture(source)
 	find_ball_center = find_center(BALL, 6)
 	find_basket_center = find_center(BASKET, 1)
+	new_score = True
 	while(cap.isOpened()):
 		ret, frame = cap.read()
 		measured_time = time.time()
@@ -41,9 +42,19 @@ def process_video(source = 0, screen_view = True):
 												  find_ball_center,
 												  find_basket_center)
 		if ball_center and basket_center:
-			score = get_score(frame)
+			if new_score:
+				score = get_score(frame)
+				# if score returns a number we assume it is correct.
+				# We trust you tesseract, do not fail us.
+				if score:
+					new_score = False
+		else:
+			new_score = True
 
 		if screen_view:
+			# if the result is to be visualised then we draw the
+			# circles marking the computed positions and yield
+			# the images as well as the positions and score
 			if ball_center:
 				cv2.circle(frame,ball_center,2,(0,0,255),3)
 			if basket_center:
