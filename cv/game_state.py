@@ -40,7 +40,6 @@ def process_video(source = 0, screen_view = True):
 		ball_center, basket_center = find_centers(binarized,
 												  find_ball_center,
 												  find_basket_center)
-				cv2.imshow("dilated", image)
 		if ball_center and basket_center:
 			score = get_score(frame)
 
