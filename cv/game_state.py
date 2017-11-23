@@ -40,7 +40,7 @@ def process_video(source = 0, screen_view = True):
 		ball_center, basket_center = find_centers(binarized,
 												  find_ball_center,
 												  find_basket_center)
-
+				cv2.imshow("dilated", image)
 		if ball_center and basket_center:
 			score = get_score(frame)
 
@@ -49,8 +49,6 @@ def process_video(source = 0, screen_view = True):
 				cv2.circle(frame,ball_center,2,(0,0,255),3)
 			if basket_center:
 				cv2.circle(frame,basket_center,2,(255,0,0),3)
-			if ball_center and basket_center:
-				get_score(frame)
 			yield (binarized, frame, ball_center, basket_center, score)
 			continue
 
@@ -115,7 +113,6 @@ def find_center(element, iterations):
 		# apply morphological operation to region of interest
 		image = image[roi[1][0]:roi[1][1], roi[0][0]:roi[1][1]]
 		image = morphological_operation(image, el, iterations=iterations)
-		cv2.imshow("dilated", image)
 		# from the contours of the image compute its 
 		# moments and from them derive the center if the
 		# area falls inside a given range
