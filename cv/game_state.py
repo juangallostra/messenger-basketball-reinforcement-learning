@@ -6,12 +6,19 @@ from PIL import Image
 import time
 import os
 
-
+# RQUIRED CONSTANTS
+# Estimated areas (should be tuned) to detect ball and basket
 BALL_AREA_THRES = (0, 1250)
 BASKET_AREA_THRES = (700, 900)
+# Regions of interest where ball, basket and score should be found
 BALL_ROI = ((0, 202), (250, 360))
 BASKET_ROI = ((0, 202), (50, 200))
 NUMBERS_ROI = ((0, 202), (200, 275))
+# Basket area and ball area grid definition for state definition
+X_BALL_DIVISIONS = 5
+X_BASKET_DIVISIONS = 15
+Y_BASKET_DIVISIONS = 15
+# Rest of constants 
 BALL = "ball"
 BASKET = "basket"
 NUMBERS = '1234567890'
@@ -194,6 +201,6 @@ if __name__ == "__main__":
 		bin_gray = cv2.cvtColor(frames[0], cv2.COLOR_GRAY2BGR)
 		frames = np.hstack((frames[1],bin_gray))
 		cv2.imshow('frame', frames)
-		#time.sleep(0.03) # slow down so that the human eye can appreciate it
+		time.sleep(0.03) # slow down so that the human eye can appreciate it
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
