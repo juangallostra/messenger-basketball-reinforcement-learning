@@ -1,3 +1,6 @@
+# Theoretically, the info we need from this module is the
+# current score and ball and basket state
+
 import cv2
 import numpy as np
 import pytesseract as ps
@@ -15,9 +18,10 @@ BALL_ROI = ((0, 202), (250, 360))
 BASKET_ROI = ((0, 202), (50, 200))
 NUMBERS_ROI = ((0, 202), (200, 275))
 # Basket area and ball area grid definition for state definition
-X_BALL_DIVISIONS = 5
-X_BASKET_DIVISIONS = 15
-Y_BASKET_DIVISIONS = 15
+X_BALL_DIVISIONS = 7
+Y_BALL_DIVISIONS = 1
+X_BASKET_DIVISIONS = 9
+Y_BASKET_DIVISIONS = 9
 # Rest of constants 
 BALL = "ball"
 BASKET = "basket"
@@ -32,9 +36,9 @@ def process_video(source = 0, screen_view = True):
 	It is defined as a generator so that the video processing loop
 	can be separated from the rest of the program logic
 
-	param::int/str::source Video source
-	param::bool::screen_view show what is happening or not
-	yields::tuple::(ball_center, basket_center, score) found centers and score or None
+	:param source: int or string str indicating the video source
+	:param screen_view: bool value that indicates if what is happening should be shown
+	:yields (ball_center, basket_center, score): tuple with the found centers and score or None
 	"""
 	cap = cv2.VideoCapture(source)
 	find_ball_center = find_center(BALL, 6)
@@ -49,6 +53,9 @@ def process_video(source = 0, screen_view = True):
 												  find_ball_center,
 												  find_basket_center)
 		if ball_center and basket_center:
+			basket_coords = grid_coordinates(BASKET_ROI, X_BASKET_DIVISIONS, Y_BASKET_DIVISIONS, basket_center)
+			ball_coords = grid_coordinates(BALL_ROI, X_BALL_DIVISIONS, Y_BALL_DIVISIONS, ball_center)
+			print basket_coords, ball_coords
 			if new_score:
 				score = get_score(frame)
 				# if score returns a number we assume it is correct.
@@ -66,6 +73,8 @@ def process_video(source = 0, screen_view = True):
 				cv2.circle(frame,ball_center,2,(0,0,255),3)
 			if basket_center:
 				cv2.circle(frame,basket_center,2,(255,0,0),3)
+			frame = _draw_grid(frame, BALL_ROI, X_BALL_DIVISIONS, Y_BALL_DIVISIONS)
+			frame = _draw_grid(frame, BASKET_ROI, X_BASKET_DIVISIONS, Y_BASKET_DIVISIONS)
 			yield (binarized, frame, ball_center, basket_center, score)
 			continue
 
@@ -81,10 +90,10 @@ def find_centers(binary_img, find_ball_center, find_basket_center):
 	not found in the ROI it means that the user already shot the ball. Then there
 	is no point in estimating the basket center position and hence it is not computed.
 
-	param::np.array::binarized numpy representation of the binarized image
-	param::func::find_ball_center function that returns the ball center
-	param::func::find_basket_center function that returns the basket center
-	returns::tuple::(ball_center, basket_center) coordinates of the centers if found else (None, None)
+	:param binary_img: np.array with the representation of the binarized image
+	:param find_ball_center: function that returns the ball center
+	:param find_basket_center: function that returns the basket center
+	:returns (ball_center, basket_center): tuple with the coordinates of the centers if found else (None, None)
 	"""
 	ball_center  = find_ball_center(binary_img)
 	# basket center should return only the true center
@@ -101,10 +110,9 @@ def find_center(element, iterations):
 	Closure that expects an element to search for as input and returns
 	a function able to find the center of that element in an image
 
-	param::str::element "ball"/"basket" that specifies the element to search for
-	param::int::iterations number of times the morphological operation should be performed
-	returns::func::find_center function that searchs for the specified element with the
-	given parameters 
+	:param element: str with value "ball"/"basket" that specifies the element to search for
+	:param iterations: int with the number of times the morphological operation should be performed
+	:returns find_center: function that searchs for the specified element with the given parameters 
 	"""
 	# Define morphological operation, structuruing element
 	# and threshold depending on what are we looking for
@@ -124,8 +132,8 @@ def find_center(element, iterations):
 		we are looking for, searchs for that element in the region of
 		interest and returns its center
 
-		param::np.array::image of the binarized image to be processed
-		returns::tuple::center coordinates of the center of the found element or None
+		:param image: np.array of the binarized image to be processed
+		returns center: tuple with coordinates of the center of the found element or None
 		"""
 		# apply morphological operation to region of interest
 		image = image[roi[1][0]:roi[1][1], roi[0][0]:roi[1][1]]
@@ -163,12 +171,57 @@ def find_center(element, iterations):
 
 	return _find_center
 
+
+def grid_coordinates(roi, x_divisions, y_divisions, position):
+	"""
+	Function that returns the grid coordinates of a given position.
+	To do so it computes, for a given area and taking into account
+	the number of x and y divisions which is the total amount of cells.
+	After that it maps the given position to the cell it falls inside and
+	returns the coordinates of that cell. Finally, it is assumed that 
+	the position is always inside the grid
+	:param roi: region of interest to be gridezied
+	:param x_divisions:number of divisions in the x axis
+	:param y_divisions:number of divisions in the y axis
+	:param position: position to transform into grid coordinates 
+	"""
+	px_per_x_division = float(roi[0][1]-roi[0][0])/x_divisions
+	px_per_y_division = float(roi[1][1]-roi[1][0])/y_divisions
+	x_in_grid = position[0] - roi[0][0]
+	y_in_grid = position[1] - roi[1][0]
+	return (int(x_in_grid/px_per_x_division), int(y_in_grid/px_per_y_division))
+
+
+def _draw_grid(image, roi, x_divisions, y_divisions):
+	"""
+	Helper function that draws a grid in an image. To do so it needs
+	the initial and final (x, y) coordinates of the grid with respect 
+	to the image and the number of divisions.
+	:param image: np.array with the image where the grid is to be drawn
+	:param roi: initial and final coordinates of the region that covers
+	the grid with respect to the image
+	:param x_divisions: number of divisions in the x axis
+	:param y_divisions: number of divisions in the y axis
+	:return image_with_grid: np.array of the image with the grid drawn
+	"""
+	px_per_x_division = float(roi[0][1]-roi[0][0])/x_divisions
+	px_per_y_division = float(roi[1][1]-roi[1][0])/y_divisions
+	for x_cell in range(x_divisions+1):
+		cv2.line(image, (roi[0][0]+int(x_cell*px_per_x_division), roi[1][0]),
+					    (roi[0][0]+int(x_cell*px_per_x_division), roi[1][1]),
+					    (0,255,0), 1)
+	for y_cell in range(x_divisions+1):
+		cv2.line(image, (roi[0][0], roi[1][0]+int(y_cell*px_per_y_division)),
+					    (roi[0][1], roi[1][0]+int(y_cell*px_per_y_division)),
+					    (0,255,0), 1)
+	return image
+
 def get_score(frame):
 	"""
 	Function that extracts the current game score from a frame via tesseract ocr
 
-	param::np.array::frame current frame of the game where the score is to be extracted
-	returns::int::score current score of the game or empty string
+	:param frame: np.array with current frame of the game where the score is to be extracted
+	:returns score: int with the current score of the game or empty string
 	"""
 	# Focus only on the area where the score is and build a PIL image from the numpy array
 	numb_area = frame[NUMBERS_ROI[1][0]:NUMBERS_ROI[1][1], NUMBERS_ROI[0][0]:NUMBERS_ROI[1][1]]
