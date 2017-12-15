@@ -55,7 +55,6 @@ def process_video(source = 0, screen_view = True):
 		if ball_center and basket_center:
 			basket_coords = grid_coordinates(BASKET_ROI, X_BASKET_DIVISIONS, Y_BASKET_DIVISIONS, basket_center)
 			ball_coords = grid_coordinates(BALL_ROI, X_BALL_DIVISIONS, Y_BALL_DIVISIONS, ball_center)
-			print basket_coords, ball_coords
 			if new_score:
 				score = get_score(frame)
 				# if score returns a number we assume it is correct.
@@ -75,10 +74,10 @@ def process_video(source = 0, screen_view = True):
 				cv2.circle(frame,basket_center,2,(255,0,0),3)
 			frame = _draw_grid(frame, BALL_ROI, X_BALL_DIVISIONS, Y_BALL_DIVISIONS)
 			frame = _draw_grid(frame, BASKET_ROI, X_BASKET_DIVISIONS, Y_BASKET_DIVISIONS)
-			yield (binarized, frame, ball_center, basket_center, score)
+			yield (binarized, frame, ball_coords, basket_coords, score)
 			continue
 
-		yield (ball_center, basket_center, score)
+		yield (ball_coords, basket_coords, score)
 		continue
 
 	cap.release()
@@ -251,6 +250,7 @@ if __name__ == "__main__":
 	while True:
 		frames = processor.next()
 		print frames[-1] # current score
+		print frames[-2], frames[-3]
 		bin_gray = cv2.cvtColor(frames[0], cv2.COLOR_GRAY2BGR)
 		frames = np.hstack((frames[1],bin_gray))
 		cv2.imshow('frame', frames)
