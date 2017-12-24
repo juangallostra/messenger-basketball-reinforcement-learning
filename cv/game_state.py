@@ -17,6 +17,7 @@ BASKET_AREA_THRES = (700, 900)
 BALL_ROI = ((0, 202), (250, 360))
 BASKET_ROI = ((0, 202), (50, 200))
 NUMBERS_ROI = ((0, 202), (200, 275))
+FAIL_ROI = ((0,202),(150, 200))
 # Basket area and ball area grid definition for state definition
 X_BALL_DIVISIONS = 7
 Y_BALL_DIVISIONS = 1
@@ -26,7 +27,6 @@ Y_BASKET_DIVISIONS = 9
 BALL = "ball"
 BASKET = "basket"
 NUMBERS = '1234567890'
-
 
 def process_video(source = 0, screen_view = True):
 	"""
@@ -55,7 +55,6 @@ def process_video(source = 0, screen_view = True):
 		if ball_center and basket_center:
 			basket_coords = grid_coordinates(BASKET_ROI, X_BASKET_DIVISIONS, Y_BASKET_DIVISIONS, basket_center)
 			ball_coords = grid_coordinates(BALL_ROI, X_BALL_DIVISIONS, Y_BALL_DIVISIONS, ball_center)
-			print basket_coords, ball_coords
 			if new_score:
 				score = get_score(frame)
 				# if score returns a number we assume it is correct.
@@ -75,10 +74,10 @@ def process_video(source = 0, screen_view = True):
 				cv2.circle(frame,basket_center,2,(255,0,0),3)
 			frame = _draw_grid(frame, BALL_ROI, X_BALL_DIVISIONS, Y_BALL_DIVISIONS)
 			frame = _draw_grid(frame, BASKET_ROI, X_BASKET_DIVISIONS, Y_BASKET_DIVISIONS)
-			yield (binarized, frame, ball_center, basket_center, score)
+			yield (binarized, frame, ball_coords, basket_coords, score)
 			continue
 
-		yield (ball_center, basket_center, score)
+		yield (ball_coords, basket_coords, score)
 		continue
 
 	cap.release()
@@ -223,6 +222,13 @@ def get_score(frame):
 	:param frame: np.array with current frame of the game where the score is to be extracted
 	:returns score: int with the current score of the game or empty string
 	"""
+	# Focus first on the area where the fail message is and build a PIL image from the numpy array
+	fail_area = frame[FAIL_ROI[1][0]:FAIL_ROI[1][1], FAIL_ROI[0][0]:FAIL_ROI[1][1]]
+	fail_im = Image.fromarray(fail_area.astype('uint8'), 'RGB')
+	# First check, by the color of the number, if the robot failed the throw
+	fail_message = ps.image_to_string(fail_im)
+	if fail_message:
+		return -1
 	# Focus only on the area where the score is and build a PIL image from the numpy array
 	numb_area = frame[NUMBERS_ROI[1][0]:NUMBERS_ROI[1][1], NUMBERS_ROI[0][0]:NUMBERS_ROI[1][1]]
 	im = Image.fromarray(numb_area.astype('uint8'), 'RGB')
@@ -246,14 +252,15 @@ if __name__ == "__main__":
 	# This tests the functions defined above
 	cur_path = os.path.abspath(__file__)
 	# If calling game_state.py from another dir that is not cv this will not work
-	video_path = os.path.relpath('resources/playthrough.mp4', cur_path)
+	video_path = os.path.relpath('resources/playthrough_3.mp4', cur_path)
 	processor = process_video(video_path) 
 	while True:
 		frames = processor.next()
 		print frames[-1] # current score
+		print frames[-2], frames[-3]
 		bin_gray = cv2.cvtColor(frames[0], cv2.COLOR_GRAY2BGR)
 		frames = np.hstack((frames[1],bin_gray))
 		cv2.imshow('frame', frames)
-		time.sleep(0.03) # slow down so that the human eye can appreciate it
+		#time.sleep(0.03) # slow down so that the human eye can appreciate it
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
