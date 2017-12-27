@@ -223,7 +223,8 @@ def get_score(frame):
 	Function that extracts the current game score from a frame via tesseract ocr
 
 	:param frame: np.array with current frame of the game where the score is to be extracted
-	:returns score: int with the current score of the game or empty string
+	:returns score: int with the current score of the game or None. In the case game over is
+	detected it returns -1
 	"""
 	# Focus first on the area where the fail message is and build a PIL image from the numpy array
 	fail_area = frame[FAIL_ROI[1][0]:FAIL_ROI[1][1], FAIL_ROI[0][0]:FAIL_ROI[1][1]]
