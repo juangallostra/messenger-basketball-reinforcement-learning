@@ -25,7 +25,16 @@ The way in which the modules relate to each other is illustrated below:
 
 ![cv](https://github.com/juangallostra/messenger-basketball-reinforcement-learning/blob/develop/resources/cv_grid.gif)
 
+### IK module
+
+**This module is currently under development**
+
+This module contains the Arduino code that:
+1. Reads via serial port a set of ```x, y, z``` coordinates.
+2. Computes the inverse kinematics of the robot and obtains the joint angles that result in the end effector reaching the desired position.
+3. Moves the servos according to the obtained angles.   
+
 ### Learning module
 
-### IK module
+**This module is currently under development**
 
