@@ -4,11 +4,22 @@ Using reinforcement learning to play basketball messenger with a robotic arm.
 This project is based on: https://github.com/JoshuaRiddell/messenger-basketball-player
 
 ## Requirments
+
+### Software
 * ```Python 2.7```
 * ```OpenCV```
 * ```numpy```
 * ```Pillow```
 * ```pytesseract```
+
+### Hardware
+(This is what we used for the project)
+* Arduino UNO
+* Raspberry Pi 2
+* 3 servos TowerPro SG90
+* 5V-2A DC Power supply
+* Raspberry Pi camera
+
 
 ## Modules
 
@@ -29,7 +40,7 @@ The way in which the modules relate to each other is illustrated below:
 
 **This module is currently under development**
 
-This module contains the Arduino code that:
+This module contains the **Arduino** code that:
 1. Reads via serial port a set of ```x, y, z``` coordinates.
 2. Computes the inverse kinematics of the robot and obtains the joint angles that result in the end effector reaching the desired position.
 3. Moves the servos according to the obtained angles.   
