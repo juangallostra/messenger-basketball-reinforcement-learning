@@ -44,6 +44,7 @@ def process_video(source = 0, screen_view = True):
 	find_ball_center = find_center(BALL, 6)
 	find_basket_center = find_center(BASKET, 1)
 	new_score = True
+	only_get_score = False
 	while(cap.isOpened()):
 		ret, frame = cap.read()
 		measured_time = time.time()
@@ -77,9 +78,11 @@ def process_video(source = 0, screen_view = True):
 			yield (binarized, frame, ball_coords, basket_coords, score)
 			continue
 
-		yield (ball_coords, basket_coords, score)
+		if only_get_score:
+			only_get_score = yield (score)
+		else:
+			only_get_score = yield (ball_coords, basket_coords, score)
 		continue
-
 	cap.release()
 	cv2.destroyAllWindows()
 
@@ -220,7 +223,8 @@ def get_score(frame):
 	Function that extracts the current game score from a frame via tesseract ocr
 
 	:param frame: np.array with current frame of the game where the score is to be extracted
-	:returns score: int with the current score of the game or empty string
+	:returns score: int with the current score of the game or None. In the case game over is
+	detected it returns -1
 	"""
 	# Focus first on the area where the fail message is and build a PIL image from the numpy array
 	fail_area = frame[FAIL_ROI[1][0]:FAIL_ROI[1][1], FAIL_ROI[0][0]:FAIL_ROI[1][1]]
@@ -253,14 +257,22 @@ if __name__ == "__main__":
 	cur_path = os.path.abspath(__file__)
 	# If calling game_state.py from another dir that is not cv this will not work
 	video_path = os.path.relpath('resources/playthrough_3.mp4', cur_path)
-	processor = process_video(video_path) 
+	screen_view = False
+	only_get_score = False
+	processor = process_video(video_path, screen_view) 
+	frames = processor.next()
 	while True:
-		frames = processor.next()
-		print frames[-1] # current score
-		print frames[-2], frames[-3]
-		bin_gray = cv2.cvtColor(frames[0], cv2.COLOR_GRAY2BGR)
-		frames = np.hstack((frames[1],bin_gray))
-		cv2.imshow('frame', frames)
+		frames = processor.send(only_get_score)
+		if frames:
+			if only_get_score:
+				print frames
+			else:
+				print frames[-1] # current score
+				print frames[-2], frames[-3]
+			if screen_view:
+				bin_gray = cv2.cvtColor(frames[0], cv2.COLOR_GRAY2BGR)
+				frames = np.hstack((frames[1],bin_gray))
+				cv2.imshow('frame', frames)
 		#time.sleep(0.03) # slow down so that the human eye can appreciate it
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
