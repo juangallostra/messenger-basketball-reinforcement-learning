@@ -5,6 +5,9 @@ import cv2
 import numpy as np
 import pytesseract as ps
 from PIL import Image
+# picamera
+from picamera.array import PiRGBArray
+from picamera import PiCamera
 # for testing purposes
 import time
 import os
@@ -28,7 +31,7 @@ BALL = "ball"
 BASKET = "basket"
 NUMBERS = '1234567890'
 
-def process_video(source = 0, screen_view = True):
+def process_video(camera, rawCapture, screen_view = True):
 	"""
 	This generator is given a video source, reads from it until 
 	key "q" is pressed and while not, it yields the ball center coordinates,
@@ -40,13 +43,13 @@ def process_video(source = 0, screen_view = True):
 	:param screen_view: bool value that indicates if what is happening should be shown
 	:yields (ball_center, basket_center, score): tuple with the found centers and score or None
 	"""
-	cap = cv2.VideoCapture(source)
 	find_ball_center = find_center(BALL, 6)
 	find_basket_center = find_center(BASKET, 1)
 	new_score = True
 	only_get_score = False
-	while(cap.isOpened()):
-		ret, frame = cap.read()
+	while(True):
+		camera.capture(rawCapture, format="bgr", use_video_port=True)
+		frame = rawCapture.reshape((480, 640, 3))
 		measured_time = time.time()
 		gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 		_, binarized = cv2.threshold(gray,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
@@ -75,7 +78,8 @@ def process_video(source = 0, screen_view = True):
 				cv2.circle(frame,basket_center,2,(255,0,0),3)
 			frame = _draw_grid(frame, BALL_ROI, X_BALL_DIVISIONS, Y_BALL_DIVISIONS)
 			frame = _draw_grid(frame, BASKET_ROI, X_BASKET_DIVISIONS, Y_BASKET_DIVISIONS)
-			yield (binarized, frame, ball_coords, basket_coords, score)
+			yield(binarized, frame)
+			#yield (binarized, frame, ball_coords, basket_coords, score)
 			continue
 
 		if only_get_score:
@@ -253,13 +257,14 @@ def get_score(frame):
 
 
 if __name__ == "__main__":
-	# This tests the functions defined above
-	cur_path = os.path.abspath(__file__)
-	# If calling game_state.py from another dir that is not cv this will not work
-	video_path = os.path.relpath('resources/playthrough_3.mp4', cur_path)
-	screen_view = False
+	# This tests the functions defined above with the camera
+	camera = PiCamera()
+	camera.resolution = (640, 480)
+	camera.framerate = 32
+	rawCapture = np.empty((640 * 480 * 3), dtype=np.uint8)
+	screen_view = True
 	only_get_score = False
-	processor = process_video(video_path, screen_view) 
+	processor = process_video(camera, rawCapture, screen_view) 
 	frames = processor.next()
 	while True:
 		frames = processor.send(only_get_score)
@@ -267,8 +272,9 @@ if __name__ == "__main__":
 			if only_get_score:
 				print frames
 			else:
-				print frames[-1] # current score
-				print frames[-2], frames[-3]
+                                pass
+				#print frames[-1] # current score
+				#print frames[-2], frames[-3]
 			if screen_view:
 				bin_gray = cv2.cvtColor(frames[0], cv2.COLOR_GRAY2BGR)
 				frames = np.hstack((frames[1],bin_gray))
