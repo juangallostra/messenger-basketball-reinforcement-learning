@@ -13,13 +13,13 @@ import os
 
 # RQUIRED CONSTANTS
 # Estimated areas (should be tuned) to detect ball and basket
-BALL_AREA_THRES = (0, 1250)
+BALL_AREA_THRES = (5000, 7000)
 BASKET_AREA_THRES = (700, 900)
 # Regions of interest where ball, basket and score should be found
-BALL_ROI = ((0, 202), (250, 360))
-BASKET_ROI = ((0, 202), (50, 200))
-NUMBERS_ROI = ((0, 202), (200, 275))
-FAIL_ROI = ((0,202),(150, 200))
+BALL_ROI = ((0, 260), (360, 470))
+BASKET_ROI = ((0, 260), (50, 200))
+NUMBERS_ROI = ((0, 260), (200, 275))
+FAIL_ROI = ((0, 260),(150, 200))
 # Basket area and ball area grid definition for state definition
 X_BALL_DIVISIONS = 7
 Y_BALL_DIVISIONS = 1
@@ -42,19 +42,22 @@ def process_video(camera, rawCapture, screen_view = True):
 	:param screen_view: bool value that indicates if what is happening should be shown
 	:yields (ball_center, basket_center, score): tuple with the found centers and score or None
 	"""
-	find_ball_center = find_center(BALL, 6)
+	find_ball_center = find_center(BALL, 3)
 	find_basket_center = find_center(BASKET, 1)
 	new_score = True
 	only_get_score = False
 	while(True):
 		camera.capture(rawCapture, format="bgr", use_video_port=True)
 		frame = rawCapture.reshape((480, 640, 3))
+		frame = frame[120:380,140:640,:]
+		frame = np.rot90(frame, 3).copy()
 		measured_time = time.time()
 		gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-		_, binarized = cv2.threshold(gray,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+		binarized = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, \
+                                                     cv2.THRESH_BINARY,11,2)
 		ball_center, basket_center = find_centers(binarized,
-												  find_ball_center,
-												  find_basket_center)
+							find_ball_center,
+                                                        find_basket_center)
 		if ball_center and basket_center:
 			basket_coords = grid_coordinates(BASKET_ROI, X_BASKET_DIVISIONS, Y_BASKET_DIVISIONS, basket_center)
 			ball_coords = grid_coordinates(BALL_ROI, X_BALL_DIVISIONS, Y_BALL_DIVISIONS, ball_center)
@@ -129,7 +132,7 @@ def find_center(element, iterations):
 	elif element == BALL:
 		el = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
 		THRESHOLDS = BALL_AREA_THRES
-		morphological_operation = cv2.dilate
+		morphological_operation = cv2.erode
 		roi = BALL_ROI
 	def _find_center(image):
 		"""
@@ -141,12 +144,14 @@ def find_center(element, iterations):
 		returns center: tuple with coordinates of the center of the found element or None
 		"""
 		# apply morphological operation to region of interest
+
 		image = image[roi[1][0]:roi[1][1], roi[0][0]:roi[1][1]]
+		image = cv2.medianBlur(image, 5)
 		image = morphological_operation(image, el, iterations=iterations)
 		# from the contours of the image compute its 
 		# moments and from them derive the center if the
 		# area falls inside a given range
-
+		
 		# OPENCV 2.4.X
 		if '2.4' in cv2.__version__:
 			contours = cv2.findContours(
@@ -161,10 +166,15 @@ def find_center(element, iterations):
 				image,
 				cv2.RETR_LIST,
 				cv2.CHAIN_APPROX_SIMPLE)
+			image = cv2.drawContours(image, contours, -1, (0,255,0), 3)
+			if element == BALL:
+                            cv2.imshow('section', image)
 
 		for contour in contours:
 			m = cv2.moments(contour)
 			area =  cv2.contourArea(contour)
+			if element == BALL:
+                            print area
 			if THRESHOLDS[0] < area < THRESHOLDS[1]:
 				try:
 					center = (int(m['m10']/m['m00']),
