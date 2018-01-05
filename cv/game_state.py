@@ -6,7 +6,6 @@ import numpy as np
 import pytesseract as ps
 from PIL import Image
 # picamera
-from picamera.array import PiRGBArray
 from picamera import PiCamera
 # for testing purposes
 import time
