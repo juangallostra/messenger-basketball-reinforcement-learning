@@ -13,13 +13,13 @@ import os
 
 # RQUIRED CONSTANTS
 # Estimated areas (should be tuned) to detect ball and basket
-BALL_AREA_THRES = (5000, 7000)
-BASKET_AREA_THRES = (700, 900)
+BALL_AREA_THRES = (200, 7000)
+BASKET_AREA_THRES = (9000, 15000)
 # Regions of interest where ball, basket and score should be found
 BALL_ROI = ((0, 260), (360, 470))
-BASKET_ROI = ((0, 260), (50, 200))
-NUMBERS_ROI = ((0, 260), (200, 275))
-FAIL_ROI = ((0, 260),(150, 200))
+BASKET_ROI = ((0, 260), (0, 260))
+NUMBERS_ROI = ((0, 260),(260, 370))
+FAIL_ROI = ((0, 260), (200, 265))
 # Basket area and ball area grid definition for state definition
 X_BALL_DIVISIONS = 7
 Y_BALL_DIVISIONS = 1
@@ -42,7 +42,7 @@ def process_video(camera, rawCapture, screen_view = True):
 	:param screen_view: bool value that indicates if what is happening should be shown
 	:yields (ball_center, basket_center, score): tuple with the found centers and score or None
 	"""
-	find_ball_center = find_center(BALL, 3)
+	find_ball_center = find_center(BALL, 1)
 	find_basket_center = find_center(BASKET, 1)
 	new_score = True
 	only_get_score = False
@@ -65,6 +65,7 @@ def process_video(camera, rawCapture, screen_view = True):
 				score = get_score(frame)
 				# if score returns a number we assume it is correct.
 				# We trust you tesseract, do not fail us.
+				print score
 				if score:
 					new_score = False
 		else:
@@ -151,8 +152,8 @@ def find_center(element, iterations):
 		# from the contours of the image compute its 
 		# moments and from them derive the center if the
 		# area falls inside a given range
-		
-		# OPENCV 2.4.X
+                    
+                # OPENCV 2.4.X
 		if '2.4' in cv2.__version__:
 			contours = cv2.findContours(
 				image,
@@ -166,15 +167,10 @@ def find_center(element, iterations):
 				image,
 				cv2.RETR_LIST,
 				cv2.CHAIN_APPROX_SIMPLE)
-			image = cv2.drawContours(image, contours, -1, (0,255,0), 3)
-			if element == BALL:
-                            cv2.imshow('section', image)
 
 		for contour in contours:
 			m = cv2.moments(contour)
 			area =  cv2.contourArea(contour)
-			if element == BALL:
-                            print area
 			if THRESHOLDS[0] < area < THRESHOLDS[1]:
 				try:
 					center = (int(m['m10']/m['m00']),
@@ -241,6 +237,7 @@ def get_score(frame):
 	"""
 	# Focus first on the area where the fail message is and build a PIL image from the numpy array
 	fail_area = frame[FAIL_ROI[1][0]:FAIL_ROI[1][1], FAIL_ROI[0][0]:FAIL_ROI[1][1]]
+	
 	fail_im = Image.fromarray(fail_area.astype('uint8'), 'RGB')
 	# First check, by the color of the number, if the robot failed the throw
 	fail_message = ps.image_to_string(fail_im)
@@ -256,7 +253,8 @@ def get_score(frame):
 	current_score = ''.join([i for i in current_score if i in NUMBERS])
 	if current_score:
 		try:
-			current_score = int(current_score)
+                        # I don't know why it adds a 1 at the end
+			current_score = int(current_score[:-1])
 		except ValueError:
 			current_score = None
 	else:
