@@ -53,6 +53,3 @@ class Learning:
                 # Just take a random move
                 action = rn.choice(range(1, self.num_actions+1))
             return action
-
-
-
