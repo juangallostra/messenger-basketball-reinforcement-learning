@@ -7,12 +7,15 @@ Servo servoArm;
 
 // Auxiliar variables
 int receivedData = 0;
+int action;
 char incomingByte;
 bool newData = false;
 bool receivedX = false;
 bool receivedY = false;
 bool receivedZ = false;
 bool receivedCoordinates = false;
+bool receivedAction = false;
+bool receivingAction = false;
 bool negativeValue = false;
 
 // x,y,z coordinates of the desired position
@@ -49,57 +52,11 @@ void loop()
     {
       processData();
     }
-    if (receivedCoordinates)
+    if (receivedCoordinates && receivedAction)
     {
       computeJointAngles();
       moveJoints();
-      delay(1000);
-      if (x == 1 || x==0.8)
-      {
-        servoGuide.write(80);
-        servoBase.write(58);
-        delay(90);
-      }
-      else if (x==0.4 || x==0.6)
-      {
-        servoGuide.write(80);
-        servoBase.write(55);
-        delay(90);
-      }
-      else if (x == 0)
-      {
-        servoGuide.write(90);  
-        delay(90);
-        servoBase.write(53);
-      }
-      else if (x==-0.4)
-      {
-        servoGuide.write(80);
-        servoBase.write(49);
-        delay(90); 
-      }
-      else if (x==-0.6)
-      {
-        servoGuide.write(80);
-        servoBase.write(49);
-        delay(90); 
-      }
-      else if (x==-0.8)
-      {
-        servoGuide.write(80);
-        servoBase.write(47);
-        delay(90);
-      }
-      else if (x==-1)
-      {
-        servoGuide.write(80);
-        servoBase.write(45);
-        delay(90);
-      }
-      //servoBase.write(53);
-      servoArm.write(0);
-      delay(1000);
-
+      performAction();
       servoBase.write(0); // 53 is the inverse kinematics 0
       servoGuide.write(30);
       
@@ -117,6 +74,11 @@ void recvWithEndMarker()
       incomingByte = Serial.read();
       if (incomingByte == '\n') 
         break;                      // exit the while(1), we're done receiving
+      else if (incomingByte == 'A')
+      {
+        receivingAction = true;
+        continue;
+      }
       else if (incomingByte == '-')
       {
         negativeValue = true;
@@ -138,6 +100,15 @@ void recvWithEndMarker()
     {
       receivedData = - receivedData;
       negativeValue = false;
+    }
+    else if (receivingAction)
+    {
+      newData = false;
+      action = receivedData;
+      receivedAction = true;
+      Serial.print("A: ");
+      Serial.println(receivedData);
+      receivingAction = false;
     }
   }
 }
@@ -185,7 +156,7 @@ void processData()
 
 void computeJointAngles()
 {
-  armAngle = asin((z-z_1)/l_3)*180.0/PI;
+  // TODO: Conisder quadrants
   armAngle = asin((z-z_1)/l_3)*180.0/PI;
   baseAngle = asin(x/(l_3*cos(armAngle*PI/180.0)))*180.0/(PI+0.0);
   guideAngle = acos((y-l_2-(l_3*cos(armAngle*PI/180.0)*cos(baseAngle*PI/180.0)))/l_1)*180/PI;
@@ -202,11 +173,64 @@ void computeJointAngles()
 
 void moveJoints()
 {
+  // TODO: calibrate servos
   // Taking into account our 0 is when the servo 0 is at 120 degrees
   servoGuide.write(170-guideAngle);
   //servoGuide.write(int(guideAngle));
   servoBase.write(int(53+baseAngle));
   delay(500);
   servoArm.write(int(-1*(armAngle+16)));
+}
+
+void performAction()
+{
+      delay(1000);
+      if (x == 1 || x==0.8)
+      {
+        servoGuide.write(80);
+        servoBase.write(58);
+        delay(90);
+      }
+      else if (x==0.4 || x==0.6)
+      {
+        servoGuide.write(80);
+        servoBase.write(55);
+        delay(90);
+      }
+      else if (x == 0)
+      {
+        servoGuide.write(90);  
+        delay(90);
+        servoBase.write(53);
+      }
+      else if (x==-0.4)
+      {
+        servoGuide.write(80);
+        servoBase.write(49);
+        delay(90); 
+      }
+      else if (x==-0.6)
+      {
+        servoGuide.write(80);
+        servoBase.write(49);
+        delay(90); 
+      }
+      else if (x==-0.8)
+      {
+        servoGuide.write(80);
+        servoBase.write(47);
+        delay(90);
+      }
+      else if (x==-1)
+      {
+        servoGuide.write(80);
+        servoBase.write(45);
+        delay(90);
+      }
+      //servoBase.write(53);
+      servoArm.write(0);
+      delay(1000);
+      receivedAction = false;
+
 }
 
