@@ -18,7 +18,7 @@ BASKET_AREA_THRES = (9000, 15000)
 # Regions of interest where ball, basket and score should be found
 BALL_ROI = ((0, 260), (360, 470))
 BASKET_ROI = ((0, 260), (0, 260))
-NUMBERS_ROI = ((0, 260),(260, 370))
+NUMBERS_ROI = ((0, 240),(240, 370))
 FAIL_ROI = ((0, 260), (200, 265))
 # Basket area and ball area grid definition for state definition
 X_BALL_DIVISIONS = 7
@@ -237,7 +237,6 @@ def get_score(frame):
 	"""
 	# Focus first on the area where the fail message is and build a PIL image from the numpy array
 	fail_area = frame[FAIL_ROI[1][0]:FAIL_ROI[1][1], FAIL_ROI[0][0]:FAIL_ROI[1][1]]
-	
 	fail_im = Image.fromarray(fail_area.astype('uint8'), 'RGB')
 	# First check, by the color of the number, if the robot failed the throw
 	fail_message = ps.image_to_string(fail_im)
@@ -245,7 +244,11 @@ def get_score(frame):
 		return -1
 	# Focus only on the area where the score is and build a PIL image from the numpy array
 	numb_area = frame[NUMBERS_ROI[1][0]:NUMBERS_ROI[1][1], NUMBERS_ROI[0][0]:NUMBERS_ROI[1][1]]
-	im = Image.fromarray(numb_area.astype('uint8'), 'RGB')
+	numb_area = cv2.medianBlur(numb_area, 5)
+	gray = cv2.cvtColor(numb_area, cv2.COLOR_BGR2GRAY)
+	binarized = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                                 cv2.THRESH_BINARY,11,2)
+	im = Image.fromarray(binarized.astype('uint8')).convert('RGB')
 	# Specify that the image should be treated as only containing
 	# one word (config param) and extract current score 
 	current_score = ps.image_to_string(im, config='-psm 8')
@@ -253,8 +256,7 @@ def get_score(frame):
 	current_score = ''.join([i for i in current_score if i in NUMBERS])
 	if current_score:
 		try:
-                        # I don't know why it adds a 1 at the end
-			current_score = int(current_score[:-1])
+			current_score = int(current_score)
 		except ValueError:
 			current_score = None
 	else:
