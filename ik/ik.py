@@ -12,7 +12,7 @@ Z_COORD = '61\n'
 def module_init():
 	print "Starting serial comunication"
 	ser = serial.Serial(PORT, BAUDRATE)
-	return serial
+	return ser
 
 def send_action(serial_com, action):
 	"""

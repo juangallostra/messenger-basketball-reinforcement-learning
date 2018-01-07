@@ -21,7 +21,7 @@ BASKET_ROI = ((0, 260), (0, 260))
 NUMBERS_ROI = ((0, 240),(240, 370))
 FAIL_ROI = ((0, 260), (200, 265))
 # Basket area and ball area grid definition for state definition
-X_BALL_DIVISIONS = 7
+X_BALL_DIVISIONS = 20
 Y_BALL_DIVISIONS = 1
 X_BASKET_DIVISIONS = 9
 Y_BASKET_DIVISIONS = 9
@@ -61,6 +61,7 @@ def process_video(camera, rawCapture, screen_view = True):
 		if ball_center and basket_center:
 			basket_coords = grid_coordinates(BASKET_ROI, X_BASKET_DIVISIONS, Y_BASKET_DIVISIONS, basket_center)
 			ball_coords = grid_coordinates(BALL_ROI, X_BALL_DIVISIONS, Y_BALL_DIVISIONS, ball_center)
+			print ball_coords
 			if new_score:
 				score = get_score(frame)
 				# if score returns a number we assume it is correct.
