@@ -9,7 +9,7 @@ Y_COORD = '955\n'
 Z_COORD = '61\n'
 
 
-def ik_module_init():
+def module_init():
 	print "Starting serial comunication"
 	ser = serial.Serial(PORT, BAUDRATE)
 	return serial

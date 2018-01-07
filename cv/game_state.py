@@ -266,7 +266,7 @@ def get_score(frame):
 	return current_score
 
 
-def cv_module_init(screen_view = False):
+def module_init(screen_view = False):
 	"""
 	This method initializes de computer vision module and returns the required objects
 	"""
