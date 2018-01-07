@@ -227,6 +227,7 @@ def _draw_grid(image, roi, x_divisions, y_divisions):
 					    (0,255,0), 1)
 	return image
 
+
 def get_score(frame):
 	"""
 	Function that extracts the current game score from a frame via tesseract ocr
@@ -263,6 +264,20 @@ def get_score(frame):
 		current_score = None
 
 	return current_score
+
+
+def cv_module_init(screen_view = False):
+	"""
+	This method initializes de computer vision module and returns the required objects
+	"""
+	# This tests the functions defined above with the camera
+	print "Starting camera"
+	camera = PiCamera()
+	camera.resolution = (640, 480)
+	camera.framerate = 32
+	rawCapture = np.empty((640 * 480 * 3), dtype=np.uint8)
+	processor = process_video(camera, rawCapture, screen_view)
+	return processor
 
 
 if __name__ == "__main__":
