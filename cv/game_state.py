@@ -81,8 +81,8 @@ def process_video(camera, rawCapture, screen_view = True):
 				cv2.circle(frame,basket_center,2,(255,0,0),3)
 			frame = _draw_grid(frame, BALL_ROI, X_BALL_DIVISIONS, Y_BALL_DIVISIONS)
 			frame = _draw_grid(frame, BASKET_ROI, X_BASKET_DIVISIONS, Y_BASKET_DIVISIONS)
-			yield(binarized, frame)
-			#yield (binarized, frame, ball_coords, basket_coords, score)
+			#yield(binarized, frame)
+			yield (binarized, frame, ball_coords, basket_coords, score)
 			continue
 
 		if only_get_score:
@@ -281,9 +281,8 @@ if __name__ == "__main__":
 			if only_get_score:
 				print frames
 			else:
-                                pass
-				#print frames[-1] # current score
-				#print frames[-2], frames[-3]
+				print frames[-1] # current score
+				print frames[-2], frames[-3]
 			if screen_view:
 				bin_gray = cv2.cvtColor(frames[0], cv2.COLOR_GRAY2BGR)
 				frames = np.hstack((frames[1],bin_gray))
