@@ -5,21 +5,23 @@ import cv2
 import numpy as np
 import pytesseract as ps
 from PIL import Image
+# picamera
+from picamera import PiCamera
 # for testing purposes
 import time
 import os
 
 # RQUIRED CONSTANTS
 # Estimated areas (should be tuned) to detect ball and basket
-BALL_AREA_THRES = (0, 1250)
-BASKET_AREA_THRES = (700, 900)
+BALL_AREA_THRES = (200, 7000)
+BASKET_AREA_THRES = (9000, 15000)
 # Regions of interest where ball, basket and score should be found
-BALL_ROI = ((0, 202), (250, 360))
-BASKET_ROI = ((0, 202), (50, 200))
-NUMBERS_ROI = ((0, 202), (200, 275))
-FAIL_ROI = ((0,202),(150, 200))
+BALL_ROI = ((0, 260), (360, 470))
+BASKET_ROI = ((0, 260), (0, 260))
+NUMBERS_ROI = ((0, 240),(240, 370))
+FAIL_ROI = ((0, 260), (200, 265))
 # Basket area and ball area grid definition for state definition
-X_BALL_DIVISIONS = 7
+X_BALL_DIVISIONS = 20
 Y_BALL_DIVISIONS = 1
 X_BASKET_DIVISIONS = 9
 Y_BASKET_DIVISIONS = 9
@@ -28,7 +30,7 @@ BALL = "ball"
 BASKET = "basket"
 NUMBERS = '1234567890'
 
-def process_video(source = 0, screen_view = True):
+def process_video(camera, rawCapture, screen_view = True):
 	"""
 	This generator is given a video source, reads from it until 
 	key "q" is pressed and while not, it yields the ball center coordinates,
@@ -40,25 +42,31 @@ def process_video(source = 0, screen_view = True):
 	:param screen_view: bool value that indicates if what is happening should be shown
 	:yields (ball_center, basket_center, score): tuple with the found centers and score or None
 	"""
-	cap = cv2.VideoCapture(source)
-	find_ball_center = find_center(BALL, 6)
+	find_ball_center = find_center(BALL, 1)
 	find_basket_center = find_center(BASKET, 1)
 	new_score = True
-	while(cap.isOpened()):
-		ret, frame = cap.read()
+	only_get_score = False
+	while(True):
+		camera.capture(rawCapture, format="bgr", use_video_port=True)
+		frame = rawCapture.reshape((480, 640, 3))
+		frame = frame[120:380,140:640,:]
+		frame = np.rot90(frame, 3).copy()
 		measured_time = time.time()
 		gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-		_, binarized = cv2.threshold(gray,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+		binarized = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, \
+                                                     cv2.THRESH_BINARY,11,2)
 		ball_center, basket_center = find_centers(binarized,
-												  find_ball_center,
-												  find_basket_center)
+							find_ball_center,
+                                                        find_basket_center)
 		if ball_center and basket_center:
 			basket_coords = grid_coordinates(BASKET_ROI, X_BASKET_DIVISIONS, Y_BASKET_DIVISIONS, basket_center)
 			ball_coords = grid_coordinates(BALL_ROI, X_BALL_DIVISIONS, Y_BALL_DIVISIONS, ball_center)
+			print ball_coords
 			if new_score:
 				score = get_score(frame)
 				# if score returns a number we assume it is correct.
 				# We trust you tesseract, do not fail us.
+				print score
 				if score:
 					new_score = False
 		else:
@@ -74,12 +82,15 @@ def process_video(source = 0, screen_view = True):
 				cv2.circle(frame,basket_center,2,(255,0,0),3)
 			frame = _draw_grid(frame, BALL_ROI, X_BALL_DIVISIONS, Y_BALL_DIVISIONS)
 			frame = _draw_grid(frame, BASKET_ROI, X_BASKET_DIVISIONS, Y_BASKET_DIVISIONS)
+			#yield(binarized, frame)
 			yield (binarized, frame, ball_coords, basket_coords, score)
 			continue
 
-		yield (ball_coords, basket_coords, score)
+		if only_get_score:
+			only_get_score = yield (score)
+		else:
+			only_get_score = yield (ball_coords, basket_coords, score)
 		continue
-
 	cap.release()
 	cv2.destroyAllWindows()
 
@@ -123,7 +134,7 @@ def find_center(element, iterations):
 	elif element == BALL:
 		el = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
 		THRESHOLDS = BALL_AREA_THRES
-		morphological_operation = cv2.dilate
+		morphological_operation = cv2.erode
 		roi = BALL_ROI
 	def _find_center(image):
 		"""
@@ -135,13 +146,15 @@ def find_center(element, iterations):
 		returns center: tuple with coordinates of the center of the found element or None
 		"""
 		# apply morphological operation to region of interest
+
 		image = image[roi[1][0]:roi[1][1], roi[0][0]:roi[1][1]]
+		image = cv2.medianBlur(image, 5)
 		image = morphological_operation(image, el, iterations=iterations)
 		# from the contours of the image compute its 
 		# moments and from them derive the center if the
 		# area falls inside a given range
-
-		# OPENCV 2.4.X
+                    
+                # OPENCV 2.4.X
 		if '2.4' in cv2.__version__:
 			contours = cv2.findContours(
 				image,
@@ -215,12 +228,14 @@ def _draw_grid(image, roi, x_divisions, y_divisions):
 					    (0,255,0), 1)
 	return image
 
+
 def get_score(frame):
 	"""
 	Function that extracts the current game score from a frame via tesseract ocr
 
 	:param frame: np.array with current frame of the game where the score is to be extracted
-	:returns score: int with the current score of the game or empty string
+	:returns score: int with the current score of the game or None. In the case game over is
+	detected it returns -1
 	"""
 	# Focus first on the area where the fail message is and build a PIL image from the numpy array
 	fail_area = frame[FAIL_ROI[1][0]:FAIL_ROI[1][1], FAIL_ROI[0][0]:FAIL_ROI[1][1]]
@@ -231,7 +246,11 @@ def get_score(frame):
 		return -1
 	# Focus only on the area where the score is and build a PIL image from the numpy array
 	numb_area = frame[NUMBERS_ROI[1][0]:NUMBERS_ROI[1][1], NUMBERS_ROI[0][0]:NUMBERS_ROI[1][1]]
-	im = Image.fromarray(numb_area.astype('uint8'), 'RGB')
+	numb_area = cv2.medianBlur(numb_area, 5)
+	gray = cv2.cvtColor(numb_area, cv2.COLOR_BGR2GRAY)
+	binarized = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                                 cv2.THRESH_BINARY,11,2)
+	im = Image.fromarray(binarized.astype('uint8')).convert('RGB')
 	# Specify that the image should be treated as only containing
 	# one word (config param) and extract current score 
 	current_score = ps.image_to_string(im, config='-psm 8')
@@ -248,19 +267,42 @@ def get_score(frame):
 	return current_score
 
 
+def module_init(screen_view = False):
+	"""
+	This method initializes de computer vision module and returns the required objects
+	"""
+	# This tests the functions defined above with the camera
+	print "Starting camera"
+	camera = PiCamera()
+	camera.resolution = (640, 480)
+	camera.framerate = 32
+	rawCapture = np.empty((640 * 480 * 3), dtype=np.uint8)
+	processor = process_video(camera, rawCapture, screen_view)
+	return processor
+
+
 if __name__ == "__main__":
-	# This tests the functions defined above
-	cur_path = os.path.abspath(__file__)
-	# If calling game_state.py from another dir that is not cv this will not work
-	video_path = os.path.relpath('resources/playthrough_3.mp4', cur_path)
-	processor = process_video(video_path) 
+	# This tests the functions defined above with the camera
+	camera = PiCamera()
+	camera.resolution = (640, 480)
+	camera.framerate = 32
+	rawCapture = np.empty((640 * 480 * 3), dtype=np.uint8)
+	screen_view = True
+	only_get_score = False
+	processor = process_video(camera, rawCapture, screen_view) 
+	frames = processor.next()
 	while True:
-		frames = processor.next()
-		print frames[-1] # current score
-		print frames[-2], frames[-3]
-		bin_gray = cv2.cvtColor(frames[0], cv2.COLOR_GRAY2BGR)
-		frames = np.hstack((frames[1],bin_gray))
-		cv2.imshow('frame', frames)
+		frames = processor.send(only_get_score)
+		if frames:
+			if only_get_score:
+				print frames
+			else:
+				print frames[-1] # current score
+				print frames[-2], frames[-3]
+			if screen_view:
+				bin_gray = cv2.cvtColor(frames[0], cv2.COLOR_GRAY2BGR)
+				frames = np.hstack((frames[1],bin_gray))
+				cv2.imshow('frame', frames)
 		#time.sleep(0.03) # slow down so that the human eye can appreciate it
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
