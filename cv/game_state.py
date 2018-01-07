@@ -243,6 +243,7 @@ def get_score(frame):
 	# First check, by the color of the number, if the robot failed the throw
 	fail_message = ps.image_to_string(fail_im)
 	if fail_message:
+		print "Game over detected; starting again"
 		return -1
 	# Focus only on the area where the score is and build a PIL image from the numpy array
 	numb_area = frame[NUMBERS_ROI[1][0]:NUMBERS_ROI[1][1], NUMBERS_ROI[0][0]:NUMBERS_ROI[1][1]]
