@@ -185,43 +185,43 @@ void moveJoints()
 void performAction()
 {
       delay(1000);
-      if (x == 1 || x==0.8)
+      if (action == 1)
       {
         servoGuide.write(80);
         servoBase.write(58);
         delay(90);
       }
-      else if (x==0.4 || x==0.6)
+      else if (action == 2)
       {
         servoGuide.write(80);
         servoBase.write(55);
         delay(90);
       }
-      else if (x == 0)
+      else if (action == 3)
       {
         servoGuide.write(90);  
         delay(90);
         servoBase.write(53);
       }
-      else if (x==-0.4)
+      else if (action == 4)
       {
         servoGuide.write(80);
         servoBase.write(49);
         delay(90); 
       }
-      else if (x==-0.6)
+      else if (action == 5)
       {
         servoGuide.write(80);
         servoBase.write(49);
         delay(90); 
       }
-      else if (x==-0.8)
+      else if (action == 6)
       {
         servoGuide.write(80);
         servoBase.write(47);
         delay(90);
       }
-      else if (x==-1)
+      else if (action == 7)
       {
         servoGuide.write(80);
         servoBase.write(45);
