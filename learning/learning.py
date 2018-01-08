@@ -1,5 +1,6 @@
 import numpy as np
 import random as rn
+import os.path
 
 
 class Learning:
@@ -7,7 +8,11 @@ class Learning:
 		
 		self.num_actions = 18
 		self.num_states = 20
-		self.Q = np.zeros((self.num_states, self.num_actions))
+		if os.path.isfile('q.txt'):
+                    self.Q = np.loadtxt('q.txt')
+                    print "Succesfully loaded model"
+                else:
+                    self.Q = np.zeros((self.num_states, self.num_actions))
 
 		self.alpha = 0.5
 		self.gamma = 0.5
