@@ -188,49 +188,49 @@ void performAction()
       if (action == 1)
       {
         servoGuide.write(80);
-        servoBase.write(62);
+        servoBase.write(72);
         delay(90);
       }
       else if (action == 2)
       {
         servoGuide.write(80);
-        servoBase.write(61);
+        servoBase.write(70);
         delay(90);
       }
       else if (action == 3)
       {
         servoGuide.write(80);
-        servoBase.write(60);
+        servoBase.write(68);
         delay(90);
       }
       else if (action == 4)
       {
         servoGuide.write(80);
-        servoBase.write(59);
+        servoBase.write(64);
         delay(90);
       }
       else if (action == 5)
       {
         servoGuide.write(80);
-        servoBase.write(58);
+        servoBase.write(62);
         delay(90);
       }
       else if (action == 6)
       {
         servoGuide.write(80);
-        servoBase.write(57);
+        servoBase.write(60);
         delay(90);
       }
       else if (action == 7)
       {
         servoGuide.write(80);
-        servoBase.write(56);
+        servoBase.write(58);
         delay(90);
       }
       else if (action == 8)
       {
         servoGuide.write(80);
-        servoBase.write(55);
+        servoBase.write(56);
         delay(90);
       }
       else if (action == 9)
@@ -243,54 +243,54 @@ void performAction()
       {
         servoGuide.write(90);  
         delay(90);
-        servoBase.write(53);
+        servoBase.write(52);
       }
       else if (action == 11)
-      {
-        servoGuide.write(80);
-        servoBase.write(52);
-        delay(90);
-      }
-      else if (action == 12)
-      {
-        servoGuide.write(80);
-        servoBase.write(51);
-        delay(90);
-      }
-      else if (action == 13)
       {
         servoGuide.write(80);
         servoBase.write(50);
         delay(90);
       }
-      else if (action == 14)
-      {
-        servoGuide.write(80);
-        servoBase.write(49);
-        delay(90);
-      }
-      else if (action == 15)
+      else if (action == 12)
       {
         servoGuide.write(80);
         servoBase.write(48);
         delay(90);
       }
-      else if (action == 16)
-      {
-        servoGuide.write(80);
-        servoBase.write(47);
-        delay(90);
-      }
-      else if (action == 17)
+      else if (action == 13)
       {
         servoGuide.write(80);
         servoBase.write(46);
         delay(90);
       }
+      else if (action == 14)
+      {
+        servoGuide.write(80);
+        servoBase.write(44);
+        delay(90);
+      }
+      else if (action == 15)
+      {
+        servoGuide.write(80);
+        servoBase.write(42);
+        delay(90);
+      }
+      else if (action == 16)
+      {
+        servoGuide.write(80);
+        servoBase.write(40);
+        delay(90);
+      }
+      else if (action == 17)
+      {
+        servoGuide.write(80);
+        servoBase.write(38);
+        delay(90);
+      }
       else if (action == 18)
       {
         servoGuide.write(80);
-        servoBase.write(45);
+        servoBase.write(36);
         delay(90);
       }
       
