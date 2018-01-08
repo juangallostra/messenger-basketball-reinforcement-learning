@@ -19,7 +19,7 @@ BASKET_AREA_THRES = (9000, 15000)
 BALL_ROI = ((0, 260), (360, 470))
 BASKET_ROI = ((0, 260), (0, 260))
 NUMBERS_ROI = ((0, 240),(240, 370))
-FAIL_ROI = ((0, 260), (200, 265))
+FAIL_ROI = ((200, 270), (0, 210))
 # Basket area and ball area grid definition for state definition
 X_BALL_DIVISIONS = 20
 Y_BALL_DIVISIONS = 1
@@ -29,6 +29,8 @@ Y_BASKET_DIVISIONS = 9
 BALL = "ball"
 BASKET = "basket"
 NUMBERS = '1234567890'
+
+FAIL_THRESH = 14200
 
 def process_video(camera, rawCapture, screen_view = True):
 	"""
@@ -44,8 +46,6 @@ def process_video(camera, rawCapture, screen_view = True):
 	"""
 	find_ball_center = find_center(BALL, 1)
 	find_basket_center = find_center(BASKET, 1)
-	new_score = True
-	only_get_score = False
 	while(True):
 		camera.capture(rawCapture, format="bgr", use_video_port=True)
 		frame = rawCapture.reshape((480, 640, 3))
@@ -62,16 +62,10 @@ def process_video(camera, rawCapture, screen_view = True):
 			basket_coords = grid_coordinates(BASKET_ROI, X_BASKET_DIVISIONS, Y_BASKET_DIVISIONS, basket_center)
 			ball_coords = grid_coordinates(BALL_ROI, X_BALL_DIVISIONS, Y_BALL_DIVISIONS, ball_center)
 			print ball_coords
-			if new_score:
-				score = get_score(frame)
-				# if score returns a number we assume it is correct.
-				# We trust you tesseract, do not fail us.
-				print score
-				if score:
-					new_score = False
-		else:
-			new_score = True
-
+			score = get_score(frame)
+			# if score returns a number we assume it is correct.
+			# We trust you tesseract, do not fail us.
+			print score
 		if screen_view:
 			# if the result is to be visualised then we draw the
 			# circles marking the computed positions and yield
@@ -238,13 +232,16 @@ def get_score(frame):
 	detected it returns -1
 	"""
 	# Focus first on the area where the fail message is and build a PIL image from the numpy array
-	fail_area = frame[FAIL_ROI[1][0]:FAIL_ROI[1][1], FAIL_ROI[0][0]:FAIL_ROI[1][1]]
-	fail_im = Image.fromarray(fail_area.astype('uint8'), 'RGB')
-	# First check, by the color of the number, if the robot failed the throw
-	fail_message = ps.image_to_string(fail_im)
-	if fail_message:
-		print "Game over detected; starting again"
-		return -1
+	fail_area = frame[FAIL_ROI[0][0]:FAIL_ROI[0][1], FAIL_ROI[1][0]:FAIL_ROI[1][1]]
+	fail_area = cv2.medianBlur(fail_area, 5)
+	gray = cv2.cvtColor(fail_area, cv2.COLOR_BGR2GRAY)
+	binarized = cv2.adaptiveThreshold(gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                                 cv2.THRESH_BINARY,11,2)
+    
+	print np.count_nonzero(binarized)
+	if np.count_nonzero(binarized) < FAIL_THRESH:
+            print "Game over"
+            return -1
 	# Focus only on the area where the score is and build a PIL image from the numpy array
 	numb_area = frame[NUMBERS_ROI[1][0]:NUMBERS_ROI[1][1], NUMBERS_ROI[0][0]:NUMBERS_ROI[1][1]]
 	numb_area = cv2.medianBlur(numb_area, 5)
@@ -303,7 +300,7 @@ if __name__ == "__main__":
 			if screen_view:
 				bin_gray = cv2.cvtColor(frames[0], cv2.COLOR_GRAY2BGR)
 				frames = np.hstack((frames[1],bin_gray))
-				cv2.imshow('frame', frames)
+				#cv2.imshow('frame', frames)
 		#time.sleep(0.03) # slow down so that the human eye can appreciate it
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
