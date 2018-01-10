@@ -11,6 +11,7 @@ This project is based on: https://github.com/JoshuaRiddell/messenger-basketball-
 * ```numpy```
 * ```Pillow```
 * ```pytesseract```
+* ```picamera```
 
 ### Hardware
 (This is what we used for the project)
@@ -19,6 +20,7 @@ This project is based on: https://github.com/JoshuaRiddell/messenger-basketball-
 * 3 servos TowerPro SG90
 * 5V-2A DC Power supply
 * Raspberry Pi camera
+* Smartphone
 
 
 ## Modules
@@ -38,12 +40,12 @@ The way in which the modules relate to each other is illustrated below:
 
 ### IK module
 
-**This module is currently under development**
+This module contains the **Arduino** code that allows to:
+1. Read via serial port a set of ```x, y, z``` coordinates.
+2. Compute the inverse kinematics of the robot and obtain the joint angles that result in the end effector reaching the desired position.
+3. Move the servos according to the obtained angles.
 
-This module contains the **Arduino** code that:
-1. Reads via serial port a set of ```x, y, z``` coordinates.
-2. Computes the inverse kinematics of the robot and obtains the joint angles that result in the end effector reaching the desired position.
-3. Moves the servos according to the obtained angles.   
+However, for the project we fixed both the `y` and `z` coordinates (since the only change between different ball positions is its `x` value). We also hardcoded inside the `ik.ino` file the set of actions we allowed the robot to perform as a set of target joint angles. The raspberry Pi is the responsible for sending through the serial both the position in coordinates of the ball and the action to be performed.
 
 ### Learning module
 
