@@ -3,6 +3,8 @@ Using reinforcement learning to play basketball messenger with a robotic arm.
 
 This project is based on: https://github.com/JoshuaRiddell/messenger-basketball-player
 
+Results: https://www.youtube.com/watch?v=baSNCdxkE-A
+
 ## Requirments
 
 ### Software
