@@ -1,19 +1,19 @@
 # Messenger-basketball-reinforcement-learning
 Using reinforcement learning to play basketball messenger with a robotic arm.
 
-The project is by [Joshua Riddell's implementation](https://github.com/JoshuaRiddell/messenger-basketball-player)
+This project is inspired by [Joshua Riddell's implementation](https://github.com/JoshuaRiddell/messenger-basketball-player).
 
-[Results video](https://www.youtube.com/watch?v=baSNCdxkE-A)
+* [Results video](https://www.youtube.com/watch?v=baSNCdxkE-A)
 
 ## Requirments
 
 ### Software
-* ```Python 2.7```
-* ```OpenCV```
-* ```numpy```
-* ```Pillow```
-* ```pytesseract```
-* ```picamera```
+* `Python 2.7`
+* `OpenCV`
+* `numpy`
+* `Pillow`
+* `pytesseract`
+* `picamera`
 
 ### Hardware
 (This is what we used for the project)
