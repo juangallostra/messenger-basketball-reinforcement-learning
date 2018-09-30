@@ -1,7 +1,7 @@
 # Messenger-basketball-reinforcement-learning
 Using reinforcement learning to play basketball messenger with a robotic arm.
 
-This project is based on: https://github.com/JoshuaRiddell/messenger-basketball-player
+The project is by [Joshua Riddell's implementation](https://github.com/JoshuaRiddell/messenger-basketball-player)
 
 [Results video](https://www.youtube.com/watch?v=baSNCdxkE-A)
 
@@ -51,5 +51,9 @@ However, for the project we fixed both the `y` and `z` coordinates (since the on
 
 ### Learning module
 
-**This module is currently under development**
+The most simple form of [Q-Learning](https://en.wikipedia.org/wiki/Q-learning) was used as Lebry's learning algorithm.
+
+## Results
+
+[Video](https://www.youtube.com/watch?v=baSNCdxkE-A)
 
